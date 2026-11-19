@@ -1,19 +1,19 @@
 import db from "../config/db.js";
 import bcrypt from "bcryptjs";
 
-// 📝 User Registration Controller
+// 1. User Registration Controller
 export const registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    // 1️⃣ Validation: Check karein fields khali toh nahi hain
+    // Validation
     if (!name || !email || !password) {
       return res.status(400).json({
-        message: "Name, email aur password is required!"
+        message: "Name, email, and password are required."
       });
     }
 
-    // 2️⃣ Duplicate Check: Kya yeh email pehle se DB me hai?
+    // Duplicate Email Check
     const [existingUser] = await db.query(
       "SELECT id FROM users WHERE email = ?",
       [email]
@@ -21,21 +21,19 @@ export const registerUser = async (req, res) => {
 
     if (existingUser.length > 0) {
       return res.status(400).json({
-        message: "Email already exists!"
+        message: "Email is already registered. Please use a different email."
       });
     }
 
-    // 3️⃣ Password Hashing (Suraksha): Password ko encrypt karna
-    // Taaki database me seedha password na dikhe (jaise: $2a$10$e8w...)
+    // Password Hashing
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 4️⃣ MySQL Database me Naya User Save Karna
+    // Save to Database
     const sql = "INSERT INTO users (name, email, password) VALUES (?, ?, ?)";
     const [result] = await db.query(sql, [name, email, hashedPassword]);
 
-    // 5️⃣ Success Response (201 = Created)
     res.status(201).json({
-      message: "User registered successfully!🎉",
+      message: "User registered successfully.",
       userId: result.insertId,
       user: { name, email }
     });
@@ -45,3 +43,64 @@ export const registerUser = async (req, res) => {
   }
 };
 
+// 2. User Login Controller
+export const loginUser = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Validation
+    if (!email || !password) {
+      return res.status(400).json({
+        message: "Email and password are required."
+      });
+    }
+
+    // Check if user exists
+    const [users] = await db.query(
+      "SELECT * FROM users WHERE email = ?",
+      [email]
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({
+        message: "User not found. Please register first."
+      });
+    }
+
+    const user = users[0];
+
+    // Password Match Check
+    const isPasswordCorrect = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordCorrect) {
+      return res.status(400).json({
+        message: "Invalid password. Please try again."
+      });
+    }
+
+    // Success Response
+    res.status(200).json({
+      message: "Login successful.",
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// 3. User Logout Controller
+export const logoutUser = async (req, res) => {
+  try {
+    res.status(200).json({
+      message: "Logged out successfully."
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
