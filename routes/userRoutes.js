@@ -1,15 +1,20 @@
 import express from "express";
-import { registerUser, loginUser, logoutUser } from "../controllers/userController.js";
+import {
+  registerUser,
+  loginUser,
+  logoutUser,
+  getUserProfile
+} from "../controllers/userController.js";
+import { verifyToken } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-// 1. Register Route: POST /user/register
+// Public Routes
 router.post("/register", registerUser);
-
-// 2. Login Route: POST /user/login
 router.post("/login", loginUser);
-
-// 3. Logout Route: POST /user/logout
 router.post("/logout", logoutUser);
+
+// Protected Route (Requires Valid JWT Token)
+router.get("/profile", verifyToken, getUserProfile);
 
 export default router;
